@@ -1,16 +1,16 @@
 // Copyright(c) 2019 Yohei Matsumoto, All right reserved.
-// f_radar.h is free software: you can redistribute it and/or modify
+// f_radar_gxhd.hpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// f_radar.h is distributed in the hope that it will be useful,
+// f_radar_gxhd.hpp is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with f_radar.h.  If not, see <http://www.gnu.org/licenses/>.
+// along with f_radar_gxhd.hpp.  If not, see <http://www.gnu.org/licenses/>.
 
 
 // This program is based on radar_pi developed under GPLv2.
@@ -18,17 +18,17 @@
 
 
 
-#ifndef _F_RADAR_H_
-#define _F_RADAR_H_
+#ifndef F_RADAR_GXHD_HPP
+#define F_RADAR_GXHD_HPP
 
-#include "../channel/ch_state.h"
-#include "../channel/ch_radar.h"
-#include "f_base.h"
+#include "ch_state.hpp"
+#include "ch_radar.hpp"
+#include "filter_base.hpp"
 
-#include "f_radar_srcs/socketutil.h"
-#include "f_radar_srcs/garminxhd.h"
-#include "f_radar_srcs/GarminxHDControl.h"
-#include "f_radar_srcs/GarminxHDReceive.h"
+#include "radar_pi/socketutil.h"
+#include "radar_pi/garminxhd.h"
+#include "radar_pi/GarminxHDControl.h"
+#include "radar_pi/GarminxHDReceive.h"
 
 struct receive_statistics {
   int packets;
@@ -81,7 +81,7 @@ class f_radar_sim: public f_base
   virtual bool proc();
 };
 
-class f_radar:public f_base
+class f_radar_gxhd:public f_base
 {
  protected:
   GarminxHDControl control;
@@ -99,7 +99,7 @@ class f_radar:public f_base
     return range_vals[irange];
   }
 
-  void write_radar_image(int val);
+  //  void write_radar_image(int val);
  public:
   static const char * str_radar_command_id[RC_NONE];
   radar_command cmd;
@@ -123,9 +123,9 @@ class f_radar:public f_base
     m_radar_timeout = now + WATCHDOG_TIMEOUT;
   }
 
-  f_radar(const char * name);
+  f_radar_gxhd(const char * name);
 
-  virtual ~f_radar()
+  virtual ~f_radar_gxhd()
     {
     }
 

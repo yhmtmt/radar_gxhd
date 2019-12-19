@@ -218,12 +218,13 @@ bool socketAddMembership(SOCKET socket, const NetworkAddress &interface_address,
   mreq.imr_multiaddr = mcast_address.addr;
 
   if (setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char *)&mreq, sizeof(mreq))) {
-    printf(("radar_pi: failed to add multicast reception for %s on interface %s"), mcast_address.FormatNetworkAddressPort(), interface_address.FormatNetworkAddress());
+    printf(("radar_pi: failed to add multicast reception for %s on interface %s"), mcast_address.FormatNetworkAddressPort().c_str(), interface_address.FormatNetworkAddress().c_str());
     return true;
   }
 
-  printf(("radar_pi: multicast reception for %s on interface %s"), mcast_address.FormatNetworkAddressPort(),
-	 interface_address.FormatNetworkAddress());
+  printf(("radar_pi: multicast reception for %s on interface %s"),
+	 mcast_address.FormatNetworkAddressPort().c_str(),
+	 interface_address.FormatNetworkAddress().c_str());
 
   // Hurrah! Success!
   return false;

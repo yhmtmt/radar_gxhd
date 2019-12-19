@@ -34,26 +34,7 @@
  ***************************************************************************
  */
 
-#include <cstdio>
-#include <cstring>
-#include <cmath>
-
-#include <iostream>
-#include <vector>
-#include <queue>
-#include <string>
-#include <map>
-#include <mutex>
-using namespace std;
-#include <opencv2/opencv.hpp>
-using namespace cv;
-
-
-#include "../../util/aws_stdlib.h"
-#include "../../util/aws_thread.h"
-#include "../../util/c_clock.h"
-
-#include "../f_radar.h"
+#include "../f_radar_gxhd.hpp"
 
 /*
  * This file not only contains the radar receive threads, it is also
@@ -150,7 +131,7 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
   int b = (bearing_raw + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;;
 
   long long tpos;
-  float lat, lon;
+  double lat, lon;
   state->get_position(tpos, lat, lon);
   radar_state->set_range(packet->range_meters);
   radar_image->set_spoke(tpos, lat, lon, b, packet->line_data, len, packet->range_meters);

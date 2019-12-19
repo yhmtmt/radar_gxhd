@@ -1,40 +1,24 @@
 // Copyright(c) 2019 Yohei Matsumoto, All right reserved.
-// f_radar.cpp is free software: you can redistribute it and/or modify
+// f_radar_gxhd.cpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// f_radar.cpp is distributed in the hope that it will be useful,
+// f_radar_gxhd.cpp is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with f_radar.cpp.  If not, see <http://www.gnu.org/licenses/>.
+// along with f_radar_gxhd.cpp.  If not, see <http://www.gnu.org/licenses/>.
 
 // This program is based on radar_pi developed under GPLv2.
 // See https://github.com/opencpn-radar-pi/radar_i
+#include "f_radar_gxhd.hpp"
 
-#include <cstdio>
-#include <cstring>
-#include <cmath>
+DEFINE_FILTER(f_radar_gxhd);
 
-#include <iostream>
-#include <string>
-#include <thread>
-#include <vector>
-#include <queue>
-#include <map>
-using namespace std;
-#include <opencv2/opencv.hpp>
-using namespace cv;
-
-#include "../util/aws_stdlib.h"
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-
-#include "f_radar.h"
-
+  
 const char * f_radar_sim::str_sim_mode[SM_NONE] = { "rand" };
 
 bool f_radar_sim::init_run()
@@ -134,20 +118,20 @@ bool f_radar_sim::proc()
   return true;
 }
 
-const char * f_radar::str_radar_command_id[RC_NONE] = {
+const char * f_radar_gxhd::str_radar_command_id[RC_NONE] = {
   "txoff", "txon", "range", "bearing_alignment",
   "no_transmit_start", "no_transmit_end",
   "gain", "sea", "rain", "interference_rejection",
   "scan_speed", "timed_idle", "timed_run", "img"
 };
 
-const int f_radar::range_vals[16] = {                                                                                                                       \
+const int f_radar_gxhd::range_vals[16] = {                                                                                                                       \
     1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
         1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
   };
 
 
-f_radar::f_radar(const char * name): f_base(name),
+f_radar_gxhd::f_radar_gxhd(const char * name): f_base(name),
 				     interface_address(172,16,1,1,0),
 				     receive(this, interface_address, gx_report, gx_data),
 				     control(gx_send), cmd(RC_NONE, 0, RCS_OFF)
@@ -163,7 +147,7 @@ f_radar::f_radar(const char * name): f_base(name),
   
 }
 
-bool f_radar::proc()
+bool f_radar_gxhd::proc()
 {
   if(cmd.id != RC_NONE){
     radar_ctrl->push(cmd.id, cmd.val, cmd.state);
@@ -216,7 +200,7 @@ bool f_radar::proc()
 	  control.SetControlValue(CT_TIMED_RUN, val, state);
 	  break;
       case RC_IMG:
-	write_radar_image(val);
+	//	write_radar_image(val);
 	break;
       default:	
 	break;
@@ -225,7 +209,8 @@ bool f_radar::proc()
   return receive.Loop();
 }
 
-void f_radar::write_radar_image(int val)
+/*
+void f_radar_gxhd::write_radar_image(int val)
 {
   // B-scope (x: range, y: azimuth)
   Mat img(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);  
@@ -268,3 +253,4 @@ void f_radar::write_radar_image(int val)
     imwrite(buf, ppi);     
   }
 }
+*/
