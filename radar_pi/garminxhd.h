@@ -7,11 +7,6 @@
 #define TIMED_OUT(t, timeout) (t >= timeout)
 
 
-struct GeoPosition {
-  double lat;
-  double lon;
-};
-
 enum RadarState {
   RADAR_OFF,
   RADAR_STANDBY,
