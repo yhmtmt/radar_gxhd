@@ -20,10 +20,9 @@
 
 #ifndef F_RADAR_GXHD_HPP
 #define F_RADAR_GXHD_HPP
-
+#include "filter_base.hpp"
 #include "ch_state.hpp"
 #include "ch_radar.hpp"
-#include "filter_base.hpp"
 
 #include "radar_pi/socketutil.h"
 #include "radar_pi/garminxhd.h"
