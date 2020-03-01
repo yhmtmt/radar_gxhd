@@ -68,7 +68,7 @@ GarminxHDControl::GarminxHDControl(NetworkAddress sendAddress) {
 GarminxHDControl::~GarminxHDControl() {
   if (m_radar_socket != INVALID_SOCKET) {
     closesocket(m_radar_socket);
-    printf(("radar_pi: %s transmit socket closed"), m_name.c_str());
+    //printf(("radar_pi: %s transmit socket closed"), m_name.c_str());
   }
 }
 
@@ -97,12 +97,12 @@ bool GarminxHDControl::Init(const std::string & name, const NetworkAddress &ifad
   }
 
   if (r) {
-    printf("radar_pi: Unable to create UDP sending socket");
+    //printf("radar_pi: Unable to create UDP sending socket");
     // Might as well give up now
     return false;
   }
 
-  printf(("radar_pi: %s transmit socket open"), m_name.c_str());
+  //printf(("radar_pi: %s transmit socket open"), m_name.c_str());
   return true;
 }
 
@@ -125,11 +125,11 @@ void GarminxHDControl::logBinaryData(const std::string &what, const void *data, 
 
 bool GarminxHDControl::TransmitCmd(const void *msg, int size) {
   if (m_radar_socket == INVALID_SOCKET) {
-    printf("radar_pi: Unable to transmit command to unknown radar");
+    //printf("radar_pi: Unable to transmit command to unknown radar");
     return false;
   }
   if (sendto(m_radar_socket, (char *)msg, size, 0, (struct sockaddr *)&m_addr, sizeof(m_addr)) < size) {
-    printf("radar_pi: Unable to transmit command to %s: %s", m_name.c_str(), SOCKETERRSTR);
+    //printf("radar_pi: Unable to transmit command to %s: %s", m_name.c_str(), SOCKETERRSTR);
     return false;
   }
 //  IF_LOG_AT(LOGLEVEL_TRANSMIT, logBinaryData(wxString::Format(wxT("%s transmit"), m_name), msg, size));
@@ -170,7 +170,7 @@ bool GarminxHDControl::SetRange(int meters) {
     packet.packet_type = 0x91e;
     packet.len1 = sizeof(packet.parm1);
     packet.parm1 = meters;
-    printf(("radar_pi: %s transmit: range %d meters"), m_name.c_str(), meters);
+    //printf(("radar_pi: %s transmit: range %d meters"), m_name.c_str(), meters);
     return TransmitCmd(&packet, sizeof(packet));
   }
   return false;
@@ -229,7 +229,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
       pck_12.packet_type = 0x930;
       pck_12.parm1 = value << 5;
 
-      printf(("radar_pi: %s Bearing alignment: %d"), m_name.c_str(), value);
+      //printf(("radar_pi: %s Bearing alignment: %d"), m_name.c_str(), value);
       r = TransmitCmd(&pck_12, sizeof(pck_12));
       break;
     }
@@ -249,7 +249,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
         r = TransmitCmd(&pck_12, sizeof(pck_12));
 	//        m_ri->m_no_transmit_start.Update(value);  // necessary because we hacked "off" as auto value
       }
-      printf(("radar_pi: %s No Transmit Start: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s No Transmit Start: value=%d state=%d"), m_name.c_str(), value, (int)state);
       break;
     }
 
@@ -267,12 +267,12 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
         pck_12.parm1 = value * 32;
         r = TransmitCmd(&pck_12, sizeof(pck_12));
       }
-      printf(("radar_pi: %s No Transmit End: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s No Transmit End: value=%d state=%d"), m_name.c_str(), value, (int)state);
       break;
     }
 
     case CT_GAIN: {
-      printf(("radar_pi: %s Gain: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s Gain: value=%d state=%d"), m_name.c_str(), value, (int)state);
 
       if (state >= RCS_AUTO_1) {
         pck_9.packet_type = 0x924;
@@ -293,7 +293,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_SEA: {
-      printf(("radar_pi: %s Sea: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s Sea: value=%d state=%d"), m_name.c_str(), value, (int)state);
 
       if (state >= RCS_AUTO_1) {
         pck_9.packet_type = 0x939;
@@ -318,7 +318,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_RAIN: {  // Rain Clutter - Manual. Range is 0x01 to 0x50
-      printf(("radar_pi: %s Rain: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s Rain: value=%d state=%d"), m_name.c_str(), value, (int)state);
 
       if (state == RCS_OFF) {
         pck_9.packet_type = 0x933;
@@ -336,7 +336,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_INTERFERENCE_REJECTION: {
-      printf(("radar_pi: %s Interference Rejection / Crosstalk: %d"), m_name.c_str(), value);
+      //printf(("radar_pi: %s Interference Rejection / Crosstalk: %d"), m_name.c_str(), value);
       pck_9.parm1 = value;
 
       pck_9.packet_type = 0x91b;
@@ -351,7 +351,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_SCAN_SPEED: {
-      printf(("radar_pi: %s Scan speed: %d"), m_name.c_str(), value);
+      //printf(("radar_pi: %s Scan speed: %d"), m_name.c_str(), value);
       pck_9.packet_type = 0x916;
       pck_9.parm1 = value * 2;
 
@@ -360,7 +360,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_TIMED_IDLE: {
-      printf(("radar_pi: %s Timed idle: value=%d state=%d"), m_name.c_str(), value, (int)state);
+      //printf(("radar_pi: %s Timed idle: value=%d state=%d"), m_name.c_str(), value, (int)state);
       if (state == RCS_OFF) {
         pck_9.packet_type = 0x942;
         pck_9.parm1 = 0;  // off
@@ -377,7 +377,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, int value, Radar
     }
 
     case CT_TIMED_RUN: {
-      printf(("radar_pi: %s Timed run: %d"), m_name.c_str(), value);
+      //printf(("radar_pi: %s Timed run: %d"), m_name.c_str(), value);
       pck_10.packet_type = 0x944;
       pck_10.parm1 = value * 60;
       r = TransmitCmd(&pck_10, sizeof(pck_10));

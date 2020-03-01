@@ -99,8 +99,10 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
 
   if (m_first_receive) {
     m_first_receive = false;
-    long long  startup_elapsed = (pfilter->get_time() - pfilter->GetBootTime()) / MSEC;
-    printf(("radar_pi: %s first radar spoke received after %lld ms\n"), pfilter->get_name(), startup_elapsed);
+    long long  startup_elapsed =
+      (pfilter->get_time() - pfilter->GetBootTime()) / MSEC;
+    spdlog::info("[{}] First radar spoke received after %lld ms",
+		 pfilter->get_name(), startup_elapsed);
   }
 
   int angle_raw = packet->angle / 8;
@@ -188,11 +190,11 @@ SOCKET GarminxHDReceive::GetNewReportSocket() {
     std::string addr = m_interface_addr.FormatNetworkAddress();
     std::string rep_addr = m_report_addr.FormatNetworkAddressPort();
 
-    printf(("radar_pi: %s scanning interface %s for data from %s"), pfilter->get_name(), addr.c_str(), rep_addr.c_str());
-
-    printf("Scanning interface %s", addr.c_str());
+    spdlog::info("[{}] Scanning interface {} for data from {}",
+		 pfilter->get_name(), addr.c_str(), rep_addr.c_str());   
   } else {
-    printf(("radar_pi: Unable to listen to socket: %s"), error.c_str());
+    spdlog::error("[{}] Unable to listen to socket {}",
+		  pfilter->get_name(), error.c_str());    
   }
   return socket;
 }
@@ -211,9 +213,11 @@ SOCKET GarminxHDReceive::GetNewDataSocket() {
     std::string addr = m_interface_addr.FormatNetworkAddress();
     std::string rep_addr = m_data_addr.FormatNetworkAddressPort();
 
-    printf(("radar_pi: %s listening for data on %s from %s"), pfilter->get_name(), addr.c_str(), rep_addr.c_str());
+    spdlog::info("[{}] Listening for data on {} from {}",
+		 pfilter->get_name(), addr.c_str(), rep_addr.c_str());
   } else {
-    printf(("radar_pi: Unable to listen to socket: %s"), error.c_str());
+    spdlog::info("[{}] Unable to listen to socket {}",
+		 pfilter->get_name(), error.c_str());
   }
   return socket;
 }
@@ -234,11 +238,6 @@ bool GarminxHDReceive::Init(ch_state * _state, ch_radar_state * _radar_state, ch
   dataSocket = INVALID_SOCKET;
   reportSocket = INVALID_SOCKET;
 
-  /*
-  printf(("radar_pi: GarminxHDReceive thread starting"));
-  if(m_receive_socket == INVALID_SOCKET)
-    return false;
-  */
   if (m_interface_addr.addr.s_addr == 0) {
     reportSocket = GetNewReportSocket();
   }  
@@ -331,7 +330,7 @@ bool GarminxHDReceive::Loop()
       } else {
 	closesocket(dataSocket);
 	dataSocket = INVALID_SOCKET;
-	printf(("radar_pi: %s illegal frame"), pfilter->get_name());
+	spdlog::error("[{}] Illegal frame", pfilter->get_name());
       }
     }
     
@@ -356,14 +355,14 @@ bool GarminxHDReceive::Loop()
 	    m_addr = radar_address.FormatNetworkAddress();
 	    
 	    if (radar_state->get_state() == RADAR_OFF) {
-	      printf(("radar_pi: %s detected at %s"), pfilter->get_name(), m_addr.c_str());
+	      spdlog::info("[{}] Detected at {}", pfilter->get_name(), m_addr.c_str());
 	      radar_state->set_state(RADAR_STANDBY);
 	    }
 	  }
 	  no_data_timeout = SECONDS_SELECT(-15);
 	}
       } else {
-	printf(("radar_pi: %s illegal report"), pfilter->get_name());
+	spdlog::error("[{}] Illegal report", pfilter->get_name());
 	closesocket(reportSocket);
 	reportSocket = INVALID_SOCKET;
       }
@@ -495,52 +494,50 @@ bool GarminxHDReceive::UpdateScannerStatus(int status) {
     switch (m_radar_status) {
       case 2:
 	radar_state->set_state(RADAR_WARMING_UP);
-        printf(("radar_pi: %s reports status WARMUP"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status WARMUP"), pfilter->get_name());
         stat = ("Warmup");
         break;
       case 3:
 	radar_state->set_state(RADAR_STANDBY);
-        printf(("radar_pi: %s reports status STANDBY"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status STANDBY"), pfilter->get_name());
         stat = ("Standby");
         break;
       case 4:
 	radar_state->set_state(RADAR_SPINNING_UP);
         pfilter->m_data_timeout = now + DATA_TIMEOUT;
-        printf(("radar_pi: %s reports status SPINNING UP"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status SPINNING UP"), pfilter->get_name());
         stat = ("Spinning up");
         break;
       case 5:
 	radar_state->set_state(RADAR_TRANSMIT);
-        printf(("radar_pi: %s reports status TRANSMIT"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status TRANSMIT"), pfilter->get_name());
         stat = ("Transmit");
         break;
       case 6:
 	radar_state->set_state(RADAR_STOPPING);
         pfilter->m_data_timeout = now + DATA_TIMEOUT;
-        printf(("radar_pi: %s reports status STOPPING"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status STOPPING"), pfilter->get_name());
         stat = ("Stopping");
         break;
       case 7:
 	radar_state->set_state(RADAR_SPINNING_DOWN);
-        printf(("radar_pi: %s reports status SPINNING DOWN"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status SPINNING DOWN"), pfilter->get_name());
         stat = ("Spinning down");
-        break;
+        break;xs
       case 10:
 	radar_state->set_state(RADAR_STARTING);
-        printf(("radar_pi: %s reports status STARTING"), pfilter->get_name());
+        spdlog::info(("[{}] Reports status STARTING"), pfilter->get_name());
         stat = ("Starting");
         break;
       default:
-        printf(("radar_pi: %s reports status %d"), pfilter->get_name(), m_radar_status);
+        spdlog::info(("[{}] Reports status %d"), pfilter->get_name(), m_radar_status);
 	{
 	  stat = ("Unknown status");
 	}	
         ret = false;
         break;
     }
-    char buf[32];
-    snprintf(buf, 32, ("IP %s %s"), m_addr.c_str(), stat.c_str());
-    printf("%s", buf);
+    spdlog::info("[{}] IP {} {}", pfilter->get_name(), m_addr.c_str(), stat.c_str());
   }
   return ret;
 }
@@ -559,7 +556,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
     switch (packet_type) {
       case 0x0916:  // Dome Speed
-        printf(("radar_pi: Garmin xHD 0x0916: scan speed %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0916: scan speed %d\n"), packet9->parm1);
         radar_state->set_scan_speed(packet9->parm1 >> 1);
         return true;
 
@@ -567,11 +564,11 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
                     // parm1 = 0 : Standby request
                     // parm1 = 1 : TX request
                     // Ignored, gxradar did nothing with this
-        printf(("radar_pi: Garmin xHD 0x0919: standby/transmit %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0919: standby/transmit %d\n"), packet9->parm1);
         return true;
 
       case 0x091e:  // Range
-        printf(("radar_pi: Garmin xHD 0x091e: range %d\n"), packet12->parm1);
+        //printf(("radar_pi: Garmin xHD 0x091e: range %d\n"), packet12->parm1);
         radar_state->set_range(packet12->parm1);  // Range in meters
         return true;
 
@@ -583,17 +580,17 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         // Manual:    0x924 = 0, 0x925 = gain, 0x91d = 0 (could be last one used?)
 
       case 0x0924:  // AutoGain on/off
-        printf(("radar_pi: Garmin xHD 0x0924: autogain %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0924: autogain %d\n"), packet9->parm1);
         m_auto_gain = packet9->parm1 > 0;
         return true;
 
       case 0x0925:  // Gain
-        printf(("radar_pi: Garmin xHD 0x0925: gain %d\n"), packet10->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0925: gain %d\n"), packet10->parm1);
         m_gain = packet10->parm1 / 100;
         return true;
 
       case 0x091d: {  // Auto Gain Mode
-        printf(("radar_pi: Garmin xHD 0x091d: auto-gain mode %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x091d: auto-gain mode %d\n"), packet9->parm1);
         RadarControlState state = RCS_MANUAL;
         if (m_auto_gain) {
           switch (packet9->parm1) {
@@ -609,23 +606,23 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
               break;
           }
         }
-        printf(("radar_pi: %s m_gain.Update(%d, %d)\n"), pfilter->get_name(), m_gain, (int)state);
+	// printf(("radar_pi: %s m_gain.Update(%d, %d)\n"), pfilter->get_name(), m_gain, (int)state);
 	radar_state->set_gain(m_gain, state);
         return true;
       }
 
       case 0x0930:  // Dome offset, called bearing alignment here
-        printf(("radar_pi: Garmin xHD 0x0930: bearing alignment %d\n"), (int32_t)packet12->parm1 / 32);
+        //printf(("radar_pi: Garmin xHD 0x0930: bearing alignment %d\n"), (int32_t)packet12->parm1 / 32);
 	radar_state->set_bearing_alignment((int32_t)packet12->parm1 / 32);
         return true;
 
       case 0x0932:  // Crosstalk reject, I guess this is the same as interference rejection?
-        printf(("radar_pi: Garmin xHD 0x0932: crosstalk/interference rejection %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0932: crosstalk/interference rejection %d\n"), packet9->parm1);
 	radar_state->set_interference_rejection(packet9->parm1);
         return true;
 
       case 0x0933:  // Rain clutter mode
-        printf(("radar_pi: Garmin xHD 0x0933: rain mode %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0933: rain mode %d\n"), packet9->parm1);
         switch (packet9->parm1) {
           case 0: {
             m_rain_mode = RCS_OFF;
@@ -640,7 +637,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0934: {
         // Rain clutter level
-        printf(("radar_pi: Garmin xHD 0x0934: rain clutter %d\n"), packet10->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0934: rain clutter %d\n"), packet10->parm1);
         m_rain_clutter = packet10->parm1 / 100;
 	radar_state->set_rain(m_rain_clutter, m_rain_mode);
         return true;
@@ -648,7 +645,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0939: {
         // Sea Clutter On/Off
-        printf(("radar_pi: Garmin xHD 0x0939: sea mode %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0939: sea mode %d\n"), packet9->parm1);
         switch (packet9->parm1) {
           case 0: {
             m_sea_mode = RCS_OFF;
@@ -673,7 +670,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x093a: {
         // Sea Clutter level
-        printf(("radar_pi: Garmin xHD 0x093a: sea clutter %d\n"), packet10->parm1);
+        //printf(("radar_pi: Garmin xHD 0x093a: sea clutter %d\n"), packet10->parm1);
         m_sea_clutter = packet10->parm1 / 100;
 	radar_state->set_sea(m_sea_clutter, m_sea_mode);
         return true;
@@ -681,7 +678,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x093b: {
         // Sea Clutter auto level
-        printf(("radar_pi: Garmin xHD 0x093a: sea clutter auto %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x093a: sea clutter auto %d\n"), packet9->parm1);
         if (m_sea_mode >= RCS_AUTO_1) {
           m_sea_mode = (RadarControlState)(RCS_AUTO_1 + packet9->parm1);
 	  radar_state->set_sea(m_sea_clutter, m_sea_mode);
@@ -690,7 +687,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
       }
 
       case 0x093f: {
-        printf(("radar_pi: Garmin xHD 0x093a: no transmit zone mode %d\n"), packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x093a: no transmit zone mode %d\n"), packet9->parm1);
         m_no_transmit_zone_mode = packet9->parm1 > 0;
         // parm1 = 0 = Zone off, in that case we want AUTO_RANGE - 1 = 'Off'.
         // parm1 = 1 = Zone on, in that case we will receive 0x0940+0x0941.
@@ -701,29 +698,29 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         return true;
       }
       case 0x0940: {
-        printf(("radar_pi: Garmin xHD 0x0940: no transmit zone start %d\n"), packet12->parm1 / 32);
+        //printf(("radar_pi: Garmin xHD 0x0940: no transmit zone start %d\n"), packet12->parm1 / 32);
         if (m_no_transmit_zone_mode) {
 	  radar_state->set_no_transmit_start(packet12->parm1 / 32, RCS_MANUAL);	  
         }
         return true;
       }
       case 0x0941: {
-        printf(("radar_pi: Garmin xHD 0x0941: no transmit zone end %d\n"), (int32_t)packet12->parm1 / 32);
+        //printf(("radar_pi: Garmin xHD 0x0941: no transmit zone end %d\n"), (int32_t)packet12->parm1 / 32);
         if (m_no_transmit_zone_mode) {
 	  radar_state->set_no_transmit_end(packet12->parm1 / 32, RCS_MANUAL);	  
         }
         return true;
       }
       case 0x02bb: {
-        printf(("radar_pi: Garmin xHD 0x02bb: something %d\n"), (int32_t)packet12->parm1);
+        //printf(("radar_pi: Garmin xHD 0x02bb: something %d\n"), (int32_t)packet12->parm1);
         return true;
       }
       case 0x02ec: {
-        printf(("radar_pi: Garmin xHD 0x02ec: something %d\n"), (int32_t)packet12->parm1);
+        //printf(("radar_pi: Garmin xHD 0x02ec: something %d\n"), (int32_t)packet12->parm1);
         return true;
       }
       case 0x0942: {
-        printf(("radar_pi: Garmin xHD 0x0942: timed idle mode %d\n"), (int32_t)packet9->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0942: timed idle mode %d\n"), (int32_t)packet9->parm1);
         if (packet9->parm1 == 0) {
           m_timed_idle_mode = RCS_OFF;
         } else {
@@ -733,28 +730,28 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
       }
 
       case 0x0943: {
-        printf(("radar_pi: Garmin xHD 0x0943: timed idle time %d s\n"), (int32_t)packet10->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0943: timed idle time %d s\n"), (int32_t)packet10->parm1);
 	radar_state->set_timed_idle(packet10->parm1 / 60, m_timed_idle_mode);
         return true;
       }
 
       case 0x0944: {
-        printf(("radar_pi: Garmin xHD 0x0944: timed run time %d s\n"), (int32_t)packet10->parm1);
+        //printf(("radar_pi: Garmin xHD 0x0944: timed run time %d s\n"), (int32_t)packet10->parm1);
 	radar_state->set_timed_run((packet10->parm1 / 60));
         return true;
       }
 
       case 0x0992: {
         // Scanner state
-        if (UpdateScannerStatus(packet9->parm1)) {
-	  
+        if (UpdateScannerStatus(packet9->parm1)) {	  
           return true;
         }
       }
 
       case 0x0993: {
         // State change announce
-        printf(("radar_pi: Garmin xHD 0x0993: state-change in %d ms\n"), packet12->parm1);
+	spdlog::info("[{}] Garmin xHD 0x0993: state-change in {} ms",
+		     pfilter->get_name(), packet12->parm1);
         radar_state->set_next_state_change(packet12->parm1 / 1000);
         return true;
       }
@@ -766,7 +763,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         // Observed with Timed Transmit (hardware control via plotter) it reports
         // 'State machine event fault - unhandled state transition request'
 
-        printf(("radar_pi: Garmin xHD 0x099b: error '%s'\n"), packet->info);
+	spdlog::error("[{}] Garmin xHD 0x099b: error:{}", pfilter->get_name(), packet->info); 
         return true;
       }
     }
