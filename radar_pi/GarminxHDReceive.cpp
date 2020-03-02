@@ -523,7 +523,7 @@ bool GarminxHDReceive::UpdateScannerStatus(int status) {
 	radar_state->set_state(RADAR_SPINNING_DOWN);
         spdlog::info(("[{}] Reports status SPINNING DOWN"), pfilter->get_name());
         stat = ("Spinning down");
-        break;xs
+        break;
       case 10:
 	radar_state->set_state(RADAR_STARTING);
         spdlog::info(("[{}] Reports status STARTING"), pfilter->get_name());
