@@ -134,7 +134,7 @@ const int f_radar_gxhd::range_vals[16] = {                                      
 f_radar_gxhd::f_radar_gxhd(const char * name): f_base(name),
 				     interface_address(172,16,1,1,0),
 				     receive(this, interface_address, gx_report, gx_data),
-				     control(gx_send), cmd(RC_NONE, 0, RCS_OFF)
+				     control(gx_send), cmd(RC_NONE, 0, RadarControlState_OFF)
 {
   register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
   register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");

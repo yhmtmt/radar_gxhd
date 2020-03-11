@@ -6,7 +6,7 @@
 #define DATA_TIMEOUT (5)
 #define TIMED_OUT(t, timeout) (t >= timeout)
 
-
+/*
 enum RadarState {
   RADAR_OFF,
   RADAR_STANDBY,
@@ -18,7 +18,7 @@ enum RadarState {
   RADAR_SPINNING_UP,
   RADAR_TRANSMIT
 };
-
+*/
 
 typedef enum ControlType {
   CT_NONE,
