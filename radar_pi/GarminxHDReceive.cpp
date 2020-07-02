@@ -223,11 +223,18 @@ SOCKET GarminxHDReceive::GetNewDataSocket() {
 }
 
 
-bool GarminxHDReceive::Init(ch_state * _state, ch_radar_state * _radar_state, ch_radar_image * _radar_image, NetworkAddress interfaceAddr)
+bool GarminxHDReceive::Init(ch_state * _state, ch_radar_state * _radar_state,
+			    ch_radar_image * _radar_image,
+			    NetworkAddress interfaceAddr,
+			    c_log * _logger, c_log * _state_logger,
+			    bool _replay)
 {
   state = _state;
   radar_state = _radar_state;
   radar_image = _radar_image;
+  logger = _logger;
+  state_logger = _state_logger;
+  replay = _replay;
   
   no_data_timeout = 0;
   no_spoke_timeout = 0;
@@ -237,15 +244,42 @@ bool GarminxHDReceive::Init(ch_state * _state, ch_radar_state * _radar_state, ch
   radar_addr = 0;  
   dataSocket = INVALID_SOCKET;
   reportSocket = INVALID_SOCKET;
-
-  if (m_interface_addr.addr.s_addr == 0) {
-    reportSocket = GetNewReportSocket();
-  }  
+  if(!replay){
+    if (m_interface_addr.addr.s_addr == 0) {
+      reportSocket = GetNewReportSocket();
+    }
+  }
   return true;
+}
+
+
+bool GarminxHDReceive::LoopReplay()
+{
+  unsigned int r = 0;
+  uint8_t data[sizeof(radar_line)];
+  long long t = pfilter->get_time();
+
+  bool data_arrived = false;
+  logger->read(t, data, r);
+  if (r > 0) {
+    ProcessFrame(data, (size_t)r);
+    data_arrived = true;
+  }
+  
+  state_logger->read(t, data, r);  
+  if (r > 0) {	
+    ProcessReport(data, (size_t)r);
+    data_arrived = true;
+  }
+  return data_arrived;
 }
 
 bool GarminxHDReceive::Loop()
 {
+  if(replay && logger && state_logger){
+    return LoopReplay();
+  }
+ 
   int r = 0;
   union {
     sockaddr_storage addr;
@@ -253,7 +287,8 @@ bool GarminxHDReceive::Loop()
   } rx_addr;
   socklen_t rx_len;
   uint8_t data[sizeof(radar_line)];
-
+  bool data_arrived = false;
+  
   /*
   if(m_receive_socket != INVALID_SOCKET)
     return false;
@@ -324,7 +359,11 @@ bool GarminxHDReceive::Loop()
       r = recvfrom(dataSocket, (char *)data, sizeof(data),
 		   0, (struct sockaddr *)&rx_addr, &rx_len);
       if (r > 0) {
+	if(logger)
+	  state_logger->write(pfilter->get_time(), data, r);
+	data_arrived = true;
 	ProcessFrame(data, (size_t)r);
+	
 	no_data_timeout = -15;
 	no_spoke_timeout = -5;
       } else {
@@ -342,7 +381,10 @@ bool GarminxHDReceive::Loop()
 	NetworkAddress radar_address;
 	radar_address.addr = rx_addr.ipv4.sin_addr;
 	radar_address.port = rx_addr.ipv4.sin_port;
-	
+
+	if(state_logger)
+	  state_logger->write(pfilter->get_time(), data, r);
+	data_arrived = true;	
 	if (ProcessReport(data, (size_t)r)) {
 	  if (!radar_addr) {
 
@@ -397,7 +439,7 @@ bool GarminxHDReceive::Loop()
     }
   }
   
-  return true;
+  return data_arrived;
 }
 
 void GarminxHDReceive::Destroy()

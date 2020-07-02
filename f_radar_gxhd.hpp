@@ -60,9 +60,10 @@ class f_radar_sim: public f_base
   unsigned char ** spokes;
   int spoke_offset, range_offset;
   void generate_test_pattern();
+
  public:
  f_radar_sim(const char * name):f_base(name), mode(SM_TEST),
-    miss_rate(0), period(2*SEC), range_meters(1852), spoke_next(0), tprev_proc(-1), tprev_image_update(-1)
+				miss_rate(0), period(2*SEC), range_meters(1852), spoke_next(0), tprev_proc(-1), tprev_image_update(-1)
   {
     register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
     register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
@@ -106,6 +107,10 @@ class f_radar_gxhd:public f_base
 
   long long m_boot_time;
   long long m_radar_timeout, m_data_timeout, m_stayalive_timeout;
+
+  unsigned int max_log_size;
+  bool enable_replay, enable_log; 
+  c_log logger, state_logger; // scan data logger, and radar state logger
   
   receive_statistics m_statistics;
   long long GetBootTime(){ return m_boot_time;};
@@ -130,22 +135,68 @@ class f_radar_gxhd:public f_base
 
   virtual bool init_run()
   {
-    if(!control.Init("GarminxHDControl", interface_address, gx_send)){
-      return false;
-    }
+    if (!enable_replay){// in online mode
+      if(!control.Init("GarminxHDControl", interface_address, gx_send)){
+	spdlog::error("[{}] Failed to initialize controller.", get_name());
+	return false;
+      }
+      
+      if(enable_log){ 
+	if(!logger.init(f_base::get_data_path(), get_name(),
+			false, max_log_size)){
+	    spdlog::error("[{}] Failed to open radar log file at {}",
+			  get_name(), f_base::get_data_path());
+	    return false;
+	}
+	char prefix[2048];
+	snprintf(prefix, 2048, "%s_state", get_name());
+	if(!state_logger.init(f_base::get_data_path(), prefix,
+			      false, max_log_size)){
+	}
+	
+	if(!receive.Init(state, radar_state, radar_image,
+			 interface_address, &logger, &state_logger)){
+	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
+	  return false;
+	}		
+      }else{
+	if(!receive.Init(state, radar_state, radar_image,
+			 interface_address)){
+	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
+	  return false;
+	}	
+      }	
+    }else{ // in replay mode 
+	if(!logger.init(f_base::get_data_path(), get_name(),
+			true, max_log_size)){
+	    spdlog::error("[{}] Failed to open radar log file at {}",
+			  get_name(), f_base::get_data_path());
+	    return false;
+	}
 
-    if(!receive.Init(state, radar_state, radar_image, interface_address)){
-      return false;
+	char prefix[2048];
+	snprintf(prefix, 2048, "%s_state", get_name());
+	if(!state_logger.init(f_base::get_data_path(), prefix,
+			      true, max_log_size)){
+	}
+	
+	if(!receive.Init(state, radar_state, radar_image,
+			 interface_address, &logger, &state_logger, true)){
+	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
+	  return false;
+	}	
+	
     }
+    
     if(!radar_image || !radar_state || !radar_ctrl)
       return false;
     
-
     return true;
   }
 
   virtual void destroy_run()
   {
+    logger.destroy();    
     receive.Destroy();
   }
 

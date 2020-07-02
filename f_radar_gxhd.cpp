@@ -71,11 +71,11 @@ void f_radar_sim::generate_test_pattern()
 
 void f_radar_sim::destroy_run()
 {
-    for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
-      free(spokes[ispoke]);
-    }
-    free(spokes);
-    spokes = NULL;
+  for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
+    free(spokes[ispoke]);
+  }
+  free(spokes);
+  spokes = NULL;
 }
 
 bool f_radar_sim::proc()
@@ -126,15 +126,19 @@ const char * f_radar_gxhd::str_radar_command_id[RC_NONE] = {
 };
 
 const int f_radar_gxhd::range_vals[16] = {                                                                                                                       \
-    1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
-        1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
-  };
+  1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
+  1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
+};
 
 
 f_radar_gxhd::f_radar_gxhd(const char * name): f_base(name),
-				     interface_address(172,16,1,1,0),
-				     receive(this, interface_address, gx_report, gx_data),
-				     control(gx_send), cmd(RC_NONE, 0, RadarControlState_OFF)
+					       interface_address(172,16,1,1,0),
+					       receive(this, interface_address, gx_report, gx_data),
+					       control(gx_send),
+					       cmd(RC_NONE, 0, RadarControlState_OFF),
+					       enable_replay(false),
+					       enable_log(false),
+					       max_log_size(2<<30)
 {
   register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
   register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
@@ -145,20 +149,23 @@ f_radar_gxhd::f_radar_gxhd(const char * name): f_base(name),
   register_fpar("cmd_val", &cmd.val, "Command value");
   register_fpar("cmd_state", &cmd_state, "Radar Control State OFF:-1, MANUAL:0, AUTO1-9:1-9");
   
+  register_fpar("replay", &enable_replay, "Enabling replay mode");
+  register_fpar("log", &enable_log, "Enabling log mode");
+  register_fpar("max_log_size", &max_log_size, "Maximum size of log file.");
 }
 
 bool f_radar_gxhd::proc()
 {
-  if(cmd.id != RC_NONE){
-    radar_ctrl->push(cmd.id, cmd.val, cmd.state);
-    cmd.id = RC_NONE;      
-  }
-  
-  radar_command_id id;
-  int val;
-  RadarControlState state;
-  while(radar_ctrl->pop(id, val, state))
-    {
+  if(!enable_replay){
+    if(cmd.id != RC_NONE){
+      radar_ctrl->push(cmd.id, cmd.val, cmd.state);
+      cmd.id = RC_NONE;      
+    }
+    
+    radar_command_id id;
+    int val;
+    RadarControlState state;
+    while(radar_ctrl->pop(id, val, state)){
       switch(id){
       case RC_TXOFF:
 	control.RadarTxOff();
@@ -197,8 +204,8 @@ bool f_radar_gxhd::proc()
 	control.SetControlValue(CT_TIMED_IDLE, val, state);
 	break;
       case RC_TIMED_RUN:
-	  control.SetControlValue(CT_TIMED_RUN, val, state);
-	  break;
+	control.SetControlValue(CT_TIMED_RUN, val, state);
+	break;
       case RC_IMG:
 	//	write_radar_image(val);
 	break;
@@ -206,51 +213,54 @@ bool f_radar_gxhd::proc()
 	break;
       }
     }
-  return receive.Loop();
+  }
+  while(receive.Loop());
+  
+  return true;
 }
 
 /*
-void f_radar_gxhd::write_radar_image(int val)
-{
+  void f_radar_gxhd::write_radar_image(int val)
+  {
   // B-scope (x: range, y: azimuth)
   Mat img(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);  
   radar_image->get_spoke_data(img.data);
     
   if(val == 0){
-    char buf[64];
-    long long t = get_time();
-    snprintf(buf, 64, "radar_%lld.png", t);
-    imwrite(buf, img);
+  char buf[64];
+  long long t = get_time();
+  snprintf(buf, 64, "radar_%lld.png", t);
+  imwrite(buf, img);
   }
 
   // PPI (North Up)
   if(val == 1){
-    Mat ppi=Mat::zeros(GARMIN_XHD_MAX_SPOKE_LEN*2,
-		       GARMIN_XHD_MAX_SPOKE_LEN*2,CV_8UC1);
-    double spoke_angle = (double)(2 * PI) / (double)GARMIN_XHD_SPOKES;
-    for (int r = 0; r < ppi.rows; r++){
-      unsigned char * ptr = ppi.ptr<unsigned char>(r);
-      for (int c = 0; c < ppi.cols; c++){
-	int x = c - GARMIN_XHD_MAX_SPOKE_LEN;
-	int y = GARMIN_XHD_MAX_SPOKE_LEN - r;
-	int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
-	ispoke = (ispoke + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
+  Mat ppi=Mat::zeros(GARMIN_XHD_MAX_SPOKE_LEN*2,
+  GARMIN_XHD_MAX_SPOKE_LEN*2,CV_8UC1);
+  double spoke_angle = (double)(2 * PI) / (double)GARMIN_XHD_SPOKES;
+  for (int r = 0; r < ppi.rows; r++){
+  unsigned char * ptr = ppi.ptr<unsigned char>(r);
+  for (int c = 0; c < ppi.cols; c++){
+  int x = c - GARMIN_XHD_MAX_SPOKE_LEN;
+  int y = GARMIN_XHD_MAX_SPOKE_LEN - r;
+  int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
+  ispoke = (ispoke + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
 	
-	int d = (int)(0.5 + sqrt((double)(x * x + y * y)));
-	unsigned char val;
-	if(d >= GARMIN_XHD_MAX_SPOKE_LEN || d < 0)
-	  val = 255;
-	else
-	  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
-	*(ptr + c) = val;
-	//	cout << "r,c=" << r << "," << c << endl;
-      }
-    }
-    char buf[64];
-    long long t = get_time();
-    snprintf(buf, 64, "radar_%lld.png", t);
-    
-    imwrite(buf, ppi);     
+  int d = (int)(0.5 + sqrt((double)(x * x + y * y)));
+  unsigned char val;
+  if(d >= GARMIN_XHD_MAX_SPOKE_LEN || d < 0)
+  val = 255;
+  else
+  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
+  *(ptr + c) = val;
+  //	cout << "r,c=" << r << "," << c << endl;
   }
-}
+  }
+  char buf[64];
+  long long t = get_time();
+  snprintf(buf, 64, "radar_%lld.png", t);
+    
+  imwrite(buf, ppi);     
+  }
+  }
 */

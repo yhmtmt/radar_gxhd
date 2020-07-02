@@ -44,7 +44,10 @@ class f_radar_gxhd;
 
 class GarminxHDReceive{
  public:
- GarminxHDReceive(f_radar_gxhd * _pfilter, NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr) : pfilter(_pfilter){
+ GarminxHDReceive(f_radar_gxhd * _pfilter,
+		  NetworkAddress interfaceAddr,
+		  NetworkAddress reportAddr,
+		  NetworkAddress dataAddr) : pfilter(_pfilter){
     m_data_addr = dataAddr;
     m_report_addr = reportAddr;
     m_next_spoke = -1;
@@ -64,8 +67,12 @@ class GarminxHDReceive{
 
   ~GarminxHDReceive() {}
 
-  bool Init(ch_state * state, ch_radar_state * radar_state, ch_radar_image * radar_image, NetworkAddress interfaceAddr);
+  bool Init(ch_state * state, ch_radar_state * radar_state,
+	    ch_radar_image * radar_image, NetworkAddress interfaceAddr,
+	    c_log * logger = nullptr, c_log * state_logger = nullptr,
+	    bool replay = false);
   bool Loop();
+  bool LoopReplay();
   void Destroy();
   
   NetworkAddress m_interface_addr;
@@ -116,6 +123,8 @@ class GarminxHDReceive{
   ch_state * state;
   ch_radar_state * radar_state;
   ch_radar_image * radar_image;
+  c_log * logger, * state_logger;
+  bool replay;
   bool UpdateScannerStatus(int status);    
 };
 
