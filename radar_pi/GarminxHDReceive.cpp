@@ -360,7 +360,7 @@ bool GarminxHDReceive::Loop()
 		   0, (struct sockaddr *)&rx_addr, &rx_len);
       if (r > 0) {
 	if(logger)
-	  state_logger->write(pfilter->get_time(), data, r);
+	  logger->write(pfilter->get_time(), data, r);
 	data_arrived = true;
 	ProcessFrame(data, (size_t)r);
 	
