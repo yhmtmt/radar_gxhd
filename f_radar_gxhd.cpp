@@ -214,8 +214,9 @@ bool f_radar_gxhd::proc()
       }
     }
   }
-  while(receive.Loop());
-  
+
+  receive.Loop();
+
   return true;
 }
 
