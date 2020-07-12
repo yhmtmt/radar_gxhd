@@ -257,20 +257,27 @@ bool GarminxHDReceive::LoopReplay()
 {
   unsigned int r = 0;
   uint8_t data[sizeof(radar_line)];
-  long long t = pfilter->get_time();
+  long long tcur = pfilter->get_time();
+  long long t = tcur;
 
-  bool data_arrived = false;
-  logger->read(t, data, r);
-  if (r > 0) {
-    ProcessFrame(data, (size_t)r);
-    data_arrived = true;
-  }
   
-  state_logger->read(t, data, r);  
-  if (r > 0) {	
-    ProcessReport(data, (size_t)r);
-    data_arrived = true;
-  }
+  bool data_arrived;
+  do{
+    data_arrived = false;
+    logger->read(t, data, r);
+    if (r > 0) {
+      ProcessFrame(data, (size_t)r);    
+      data_arrived = true;
+    }
+    
+    t = tcur;  
+    state_logger->read(t, data, r);  
+    if (r > 0) {	
+      ProcessReport(data, (size_t)r);
+      data_arrived = true;
+    }
+  }while(data_arrived);
+  
   return data_arrived;
 }
 
