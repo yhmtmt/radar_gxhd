@@ -18,27 +18,30 @@
 
 DEFINE_FILTER(f_radar_gxhd);
 
-  
-const char * f_radar_sim::str_sim_mode[SM_NONE] = { "rand" };
+const char *f_radar_sim::str_sim_mode[SM_NONE] = {"rand"};
 
 bool f_radar_sim::init_run()
 {
-  if(!state){
+  if (!state)
+  {
     cerr << "state channel is not found." << endl;
     return false;
   }
 
-  if(!radar_image){
+  if (!radar_image)
+  {
     cerr << "radar_image channel is not found." << endl;
     return false;
   }
 
-  spoke_offset = 0; range_offset = 0;
+  spoke_offset = 0;
+  range_offset = 0;
   spoke_next = 0;
-  spokes = (unsigned char **) malloc(sizeof(unsigned char*)*GARMIN_XHD_SPOKES);
-  for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
-    spokes[ispoke] = (unsigned char*) malloc(sizeof(unsigned char)*GARMIN_XHD_MAX_SPOKE_LEN);
-    memset(spokes[ispoke], 0, sizeof(unsigned char)*GARMIN_XHD_MAX_SPOKE_LEN);
+  spokes = (unsigned char **)malloc(sizeof(unsigned char *) * GARMIN_XHD_SPOKES);
+  for (int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++)
+  {
+    spokes[ispoke] = (unsigned char *)malloc(sizeof(unsigned char) * GARMIN_XHD_MAX_SPOKE_LEN);
+    memset(spokes[ispoke], 0, sizeof(unsigned char) * GARMIN_XHD_MAX_SPOKE_LEN);
   }
 
   return true;
@@ -47,31 +50,34 @@ bool f_radar_sim::init_run()
 void f_radar_sim::generate_test_pattern()
 {
   long long t = get_time();
-  if(t - tprev_image_update >  period){
-    for (int spoke = 0; spoke < GARMIN_XHD_SPOKES; spoke++){
-      unsigned char * spoke_data = spokes[spoke];
+  if (t - tprev_image_update > period)
+  {
+    for (int spoke = 0; spoke < GARMIN_XHD_SPOKES; spoke++)
+    {
+      unsigned char *spoke_data = spokes[spoke];
       int pattern_period = 1 + (spoke_offset) % GARMIN_XHD_MAX_SPOKE_LEN;
       int pattern_phase = range_offset;
-      for(int range = 0; range < GARMIN_XHD_MAX_SPOKE_LEN; range++){
-	if(((range_offset + range) / pattern_period) % 2)
-	  spoke_data[range] = 255;
-	else
-	  spoke_data[range] = 0;
+      for (int range = 0; range < GARMIN_XHD_MAX_SPOKE_LEN; range++)
+      {
+        if (((range_offset + range) / pattern_period) % 2)
+          spoke_data[range] = 255;
+        else
+          spoke_data[range] = 0;
       }
     }
-    
+
     tprev_image_update = t;
   }
   spoke_offset += GARMIN_XHD_SPOKES / 60;
   range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;
   spoke_offset %= GARMIN_XHD_SPOKES;
   range_offset %= GARMIN_XHD_MAX_SPOKE_LEN;
-  
 }
 
 void f_radar_sim::destroy_run()
 {
-  for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
+  for (int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++)
+  {
     free(spokes[ispoke]);
   }
   free(spokes);
@@ -81,75 +87,79 @@ void f_radar_sim::destroy_run()
 bool f_radar_sim::proc()
 {
   long long tcur = get_time();
-  if(tprev_proc < 0){
-    tprev_proc = tcur;;
-  }else{
+  if (tprev_proc < 0)
+  {
+    tprev_proc = tcur;
+    ;
+  }
+  else
+  {
     tproc_period = tcur - tprev_proc;
-    num_spokes_per_proc = (int)((double) tproc_period / ((double)period / (double)GARMIN_XHD_SPOKES));
-    tprev_proc = tcur;    
+    num_spokes_per_proc = (int)((double)tproc_period / ((double)period / (double)GARMIN_XHD_SPOKES));
+    tprev_proc = tcur;
   }
 
   // update image
-  switch(mode){
+  switch (mode)
+  {
   case SM_TEST:
     generate_test_pattern();
     break;
   default:
     break;
   }
-  
+
   // update spoke
-  for(int ispoke = 0; ispoke < num_spokes_per_proc; ispoke++){
-    if((double)rand() / (double)RAND_MAX < miss_rate){
+  for (int ispoke = 0; ispoke < num_spokes_per_proc; ispoke++)
+  {
+    if ((double)rand() / (double)RAND_MAX < miss_rate)
+    {
       spoke_next = (spoke_next + 1) % GARMIN_XHD_SPOKES;
       continue;
     }
-    
+
     long long tpos;
     double lat, lon;
     state->get_position(tpos, lat, lon);
     radar_image->set_spoke(tpos, lat, lon,
-			   spoke_next,
-			   spokes[spoke_next],
-			   GARMIN_XHD_MAX_SPOKE_LEN, range_meters);
+                           spoke_next,
+                           spokes[spoke_next],
+                           GARMIN_XHD_MAX_SPOKE_LEN, range_meters);
     spoke_next = (spoke_next + 1) % GARMIN_XHD_SPOKES;
   }
-  
+
   return true;
 }
 
-const char * f_radar_gxhd::str_radar_command_id[RC_NONE] = {
-  "txoff", "txon", "range", "bearing_alignment",
-  "no_transmit_start", "no_transmit_end",
-  "gain", "sea", "rain", "interference_rejection",
-  "scan_speed", "timed_idle", "timed_run", "img"
-};
+const char *f_radar_gxhd::str_radar_command_id[RC_NONE] = {
+    "txoff", "txon", "range", "bearing_alignment",
+    "no_transmit_start", "no_transmit_end",
+    "gain", "sea", "rain", "interference_rejection",
+    "scan_speed", "timed_idle", "timed_run", "img"};
 
-const int f_radar_gxhd::range_vals[16] = {                                                                                                                       \
-  1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
-  1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
-};
+const int f_radar_gxhd::range_vals[16] = {
+    1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8,
+    1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48};
 
-
-f_radar_gxhd::f_radar_gxhd(const char * name): f_base(name),
-					       interface_address(172,16,1,1,0),
-					       receive(this, interface_address, gx_report, gx_data),
-					       control(gx_send),
-					       cmd(RC_NONE, 0, RadarControlState_OFF),
-					       enable_replay(false),
-					       enable_log(false),
-					       max_log_size(2<<30),
-                 verb_flag(false)
+f_radar_gxhd::f_radar_gxhd(const char *name) : f_base(name),
+                                               interface_address(172, 16, 1, 1, 0),
+                                               receive(this, interface_address, gx_report, gx_data),
+                                               control(gx_send),
+                                               cmd(RC_NONE, 0, RadarControlState_OFF),
+                                               enable_replay(false),
+                                               enable_log(false),
+                                               max_log_size(2 << 30),
+                                               verb_flag(false)
 {
-  register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
-  register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
-  register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
-  register_fpar("radar_ctrl", (ch_base**)&radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
-  
-  register_fpar("cmd_id", (int*)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
+  register_fpar("state", (ch_base **)&state, typeid(ch_state).name(), "State channel");
+  register_fpar("radar_state", (ch_base **)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
+  register_fpar("radar_image", (ch_base **)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
+  register_fpar("radar_ctrl", (ch_base **)&radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
+
+  register_fpar("cmd_id", (int *)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
   register_fpar("cmd_val", &cmd.val, "Command value");
   register_fpar("cmd_state", &cmd_state, "Radar Control State OFF:-1, MANUAL:0, AUTO1-9:1-9");
-  
+
   register_fpar("replay", &enable_replay, "Enabling replay mode");
   register_fpar("log", &enable_log, "Enabling log mode");
   register_fpar("max_log_size", &max_log_size, "Maximum size of log file.");
@@ -163,130 +173,154 @@ f_radar_gxhd::~f_radar_gxhd()
 
 bool f_radar_gxhd::init_run()
 {
-  if (!enable_replay){// in online mode
-      if(!control.Init("GarminxHDControl", interface_address, gx_send)){
-	spdlog::error("[{}] Failed to initialize controller.", get_name());
-	return false;
-      }
-      
-      if(enable_log){ 
-	if(!logger.init(f_base::get_data_path(), get_name(),
-			false, max_log_size)){
-	    spdlog::error("[{}] Failed to open radar log file at {}",
-			  get_name(), f_base::get_data_path());
-	    return false;
-	}
-	char prefix[2048];
-	snprintf(prefix, 2048, "%s_state", get_name());
-	if(!state_logger.init(f_base::get_data_path(), prefix,
-			      false, max_log_size)){
-	}
-	
-	if(!receive.Init(state, radar_state, radar_image,
-			 interface_address, &logger, &state_logger)){
-	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
-	  return false;
-	}		
-      }else{
-	if(!receive.Init(state, radar_state, radar_image,
-			 interface_address)){
-	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
-	  return false;
-	}	
-      }	
-    }else{ // in replay mode 
-	if(!logger.init(f_base::get_data_path(), get_name(),
-			true, max_log_size)){
-	    spdlog::error("[{}] Failed to open radar log file at {}",
-			  get_name(), f_base::get_data_path());
-	    return false;
-	}
-
-	char prefix[2048];
-	snprintf(prefix, 2048, "%s_state", get_name());
-	if(!state_logger.init(f_base::get_data_path(), prefix,
-			      true, max_log_size)){
-	}
-	
-	if(!receive.Init(state, radar_state, radar_image,
-			 interface_address, &logger, &state_logger, true)){
-	  spdlog::error("[{}] Failed to initialize receiver.", get_name());
-	  return false;
-	}	
-	
-    }
-    
-    if(!radar_image || !radar_state || !radar_ctrl)
+  if (!enable_replay)
+  { // in online mode
+    if (!control.Init("GarminxHDControl", interface_address, gx_send))
+    {
+      spdlog::error("[{}] Failed to initialize controller.", get_name());
       return false;
-    
-    return true;
+    }
+
+    if (enable_log)
+    {
+      if (!logger.init(f_base::get_data_path(), get_name(),
+                       false, max_log_size))
+      {
+        spdlog::error("[{}] Failed to open radar log file at {}",
+                      get_name(), f_base::get_data_path());
+        return false;
+      }
+      char prefix[2048];
+      snprintf(prefix, 2048, "%s_state", get_name());
+      if (!state_logger.init(f_base::get_data_path(), prefix,
+                             false, max_log_size))
+      {
+      }
+
+      if (!receive.Init(state, radar_state, radar_image,
+                        interface_address, &logger, &state_logger))
+      {
+        spdlog::error("[{}] Failed to initialize receiver.", get_name());
+        return false;
+      }
+    }
+    else
+    {
+      if (!receive.Init(state, radar_state, radar_image,
+                        interface_address))
+      {
+        spdlog::error("[{}] Failed to initialize receiver.", get_name());
+        return false;
+      }
+    }
+  }
+  else
+  { // in replay mode
+    if (!logger.init(f_base::get_data_path(), get_name(),
+                     true, max_log_size))
+    {
+      spdlog::error("[{}] Failed to open radar log file at {}",
+                    get_name(), f_base::get_data_path());
+      return false;
+    }
+
+    char prefix[2048];
+    snprintf(prefix, 2048, "%s_state", get_name());
+    if (!state_logger.init(f_base::get_data_path(), prefix,
+                           true, max_log_size))
+    {
+    }
+
+    if (!receive.Init(state, radar_state, radar_image,
+                      interface_address, &logger, &state_logger, true))
+    {
+      spdlog::error("[{}] Failed to initialize receiver.", get_name());
+      return false;
+    }
+  }
+
+  if (!radar_image || !radar_state || !radar_ctrl)
+    return false;
+
+  return true;
 }
 
 void f_radar_gxhd::destroy_run()
 {
   logger.destroy();
   receive.Destroy();
-  spdlog::info("[{}] {} packets, {} broken, {} spokes, {} missing, {} broken",  get_name(), m_statistics.packets, 
-  m_statistics.broken_packets, m_statistics.spokes, m_statistics.missing_spokes, m_statistics.broken_spokes);
+  m_statistics.calc_stat();
+
+  double rpm = 60 * (double)(m_statistics.spokes + m_statistics.missing_spokes) /
+               ((double)GARMIN_XHD_SPOKES * ((double)(m_statistics.tend - m_statistics.tstart) / (double)SEC));
+
+  spdlog::info("[{}] {} packets, {} broken, {} spokes, {} missing, {} rpm", get_name(), m_statistics.packets,
+               m_statistics.broken_packets, m_statistics.spokes, m_statistics.missing_spokes, rpm);
+  spdlog::info("[{}] Dmin {}, Dmax {}, Vmin {}, Vmax {}, Vavg {}", get_name(), m_statistics.dmin, m_statistics.dmax,
+               m_statistics.vmin, m_statistics.vmax, m_statistics.vavg);
 }
 
 bool f_radar_gxhd::proc()
 {
-  if(!enable_replay){
-    if(cmd.id != RC_NONE){
+  if (!enable_replay)
+  {
+    if (cmd.id != RC_NONE)
+    {
       radar_ctrl->push(cmd.id, cmd.val, cmd.state);
-      cmd.id = RC_NONE;      
+      cmd.id = RC_NONE;
     }
-    
+
     radar_command_id id;
     int val;
     RadarControlState state;
-    while(radar_ctrl->pop(id, val, state)){
-      switch(id){
+    while (radar_ctrl->pop(id, val, state))
+    {
+      switch (id)
+      {
       case RC_TXOFF:
-	control.RadarTxOff();
-	break;
+        control.RadarTxOff();
+        break;
       case RC_TXON:
-	control.RadarTxOn();
-	break;
+        control.RadarTxOn();
+        break;
       case RC_RANGE:
-	control.SetRange(find_nearest_range(val));
-	break;
+        control.SetRange(find_nearest_range(val));
+        break;
       case RC_BEARING_ALIGNMENT:
-	control.SetControlValue(CT_BEARING_ALIGNMENT, val, state);
-	break;
+        control.SetControlValue(CT_BEARING_ALIGNMENT, val, state);
+        break;
       case RC_NO_TRANSMIT_START:
-	control.SetControlValue(CT_NO_TRANSMIT_START, val, state);
-	break;	  
+        control.SetControlValue(CT_NO_TRANSMIT_START, val, state);
+        break;
       case RC_NO_TRANSMIT_END:
-	control.SetControlValue(CT_NO_TRANSMIT_END, val, state);
-	break;
+        control.SetControlValue(CT_NO_TRANSMIT_END, val, state);
+        break;
       case RC_GAIN:
-	control.SetControlValue(CT_GAIN, val, state);
-	break;
+        control.SetControlValue(CT_GAIN, val, state);
+        break;
       case RC_SEA:
-	control.SetControlValue(CT_SEA, val, state);
-	break;
+        control.SetControlValue(CT_SEA, val, state);
+        break;
       case RC_RAIN:
-	control.SetControlValue(CT_RAIN, val, state);
-	break;
+        control.SetControlValue(CT_RAIN, val, state);
+        break;
       case RC_INTERFERENCE_REJECTION:
-	control.SetControlValue(CT_INTERFERENCE_REJECTION, val, state);
-	break;
+        control.SetControlValue(CT_INTERFERENCE_REJECTION, val, state);
+        break;
       case RC_SCAN_SPEED:
-	control.SetControlValue(CT_SCAN_SPEED, val, state);
-	break;
+        control.SetControlValue(CT_SCAN_SPEED, val, state);
+        break;
       case RC_TIMED_IDLE:
-	control.SetControlValue(CT_TIMED_IDLE, val, state);
-	break;
+        control.SetControlValue(CT_TIMED_IDLE, val, state);
+        break;
       case RC_TIMED_RUN:
-	control.SetControlValue(CT_TIMED_RUN, val, state);
-	break;
+        control.SetControlValue(CT_TIMED_RUN, val, state);
+        break;
       case RC_IMG:
-	//	write_radar_image(val);
-	break;
-      default:	
-	break;
+        //	write_radar_image(val);
+        break;
+      default:
+        break;
       }
     }
   }
