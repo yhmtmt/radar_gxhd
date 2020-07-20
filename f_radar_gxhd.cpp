@@ -15,6 +15,8 @@
 // This program is based on radar_pi developed under GPLv2.
 // See https://github.com/opencpn-radar-pi/radar_i
 #include "f_radar_gxhd.hpp"
+#include "radar.pb.h"
+#include "aws_proto.hpp"
 
 DEFINE_FILTER(f_radar_gxhd);
 
@@ -258,6 +260,22 @@ void f_radar_gxhd::destroy_run()
                m_statistics.broken_packets, m_statistics.spokes, m_statistics.missing_spokes, rpm);
   spdlog::info("[{}] Dmin {}, Dmax {}, Vmin {}, Vmax {}, Vavg {}", get_name(), m_statistics.dmin, m_statistics.dmax,
                m_statistics.vmin, m_statistics.vmax, m_statistics.vavg);
+
+  RadarStat rs;
+  rs.set_packets(m_statistics.packets);
+  rs.set_broken_packets(m_statistics.broken_packets);
+  rs.set_spokes(m_statistics.spokes);
+  rs.set_missing_spokes(m_statistics.missing_spokes);
+  for(int i = 0; i < 256; i++){
+    rs.add_vhist(m_statistics.hist[i]);
+  }
+
+  char filepath[2048];
+  snprintf(filepath, 2048, "%s/%s_stat.json", f_base::get_data_path().c_str(), get_name());
+  if(!save_proto_object(filepath, rs)){
+    spdlog::error("[{}] Failed to save {}", get_name(), filepath);
+    return;
+  }
 }
 
 bool f_radar_gxhd::proc()
