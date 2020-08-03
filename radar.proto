@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message RadarStat{
+	uint64 packets = 1;
+	uint64 broken_packets = 2;
+	uint64 spokes = 3;
+	uint64 missing_spokes = 4;
+	repeated uint64 vhist = 5;
+}
